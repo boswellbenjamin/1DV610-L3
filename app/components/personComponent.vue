@@ -40,6 +40,10 @@ function generateWithImage() {
   person.value = Person.random();
   renderPortrait();
 }
+
+function generateWithoutImage() {
+  person.value = Person.random();
+}
 </script>
 
 <template>
@@ -116,13 +120,21 @@ function generateWithImage() {
         </div>
       </div>
     </div>
-
-    <button
-      @click="generateWithImage()"
-      :disabled="isLoadingImage"
-      class="w-full bg-blue-500 hover:from-blue-600 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      Generate New Person
-    </button>
+    <div class="flex justify-center space-x-4">
+      <button
+        @click="generateWithImage()"
+        :disabled="isLoadingImage"
+        class="bg-blue-500 hover:from-blue-600 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Generate person with image
+      </button>
+      <button
+        @click="generateWithoutImage()"
+        :disabled="isLoadingImage"
+        class="bg-blue-500 hover:from-blue-600 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Generate person without image
+      </button>
+    </div>
   </div>
 </template>
