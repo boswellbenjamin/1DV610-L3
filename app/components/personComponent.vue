@@ -51,7 +51,7 @@ function generateWithoutImage() {
     class="max-w-2xl mx-auto bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-8 text-white"
   >
     <p class="flex justify-center mb-8 text-red-500 underline">
-      Note that generating a person with image can take time.
+      !Note that generating a person with image can take time!
     </p>
     <div class="flex flex-col items-center mb-8">
       <div class="relative w-64 h-64">
