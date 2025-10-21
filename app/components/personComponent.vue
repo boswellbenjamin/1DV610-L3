@@ -117,14 +117,28 @@ function generateWithoutImage() {
         <div class="text-sm text-gray-400 mb-1">Email</div>
         <div class="text-sm font-medium break-all">{{ person.getEmail() }}</div>
       </div>
-
-      <div class="bg-gray-700/50 rounded-xl p-4">
-        <div class="text-sm text-gray-400 mb-1">Location</div>
-        <div class="text-sm font-medium">
-          {{ person.getCity() }}, {{ person.getCountry() }}
+      <div class="grid grid-cols-2 gap-4">
+        <div class="bg-gray-700/50 rounded-xl p-4">
+          <div class="text-sm text-gray-400 mb-1">Country</div>
+          <div class="text-sm font-medium">
+            {{ person.getCountry() }}
+          </div>
+        </div>
+        <div class="bg-gray-700/50 rounded-xl p-4">
+          <div class="text-sm text-gray-400 mb-1">City</div>
+          <div class="text-sm font-medium">{{ person.getCity() }}</div>
+        </div>
+        <div class="bg-gray-700/50 rounded-xl p-4">
+          <div class="text-sm text-gray-400 mb-1">Postal Code</div>
+          <div class="text-sm font-medium">{{ person.getPostalCode() }}</div>
+        </div>
+        <div class="bg-gray-700/50 rounded-xl p-4">
+          <div class="text-sm text-gray-400 mb-1">Street Address</div>
+          <div class="text-sm font-medium">{{ person.getAddress() }}</div>
         </div>
       </div>
     </div>
+
     <div class="flex justify-center space-x-4">
       <button
         @click="generateWithImage()"
