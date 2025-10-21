@@ -83,7 +83,7 @@ l3/
 │       └── generate-portrait.post.ts  # API endpoint for portrait generation
 ├── public/
 │   └── blank-profilepic.svg      # Placeholder image
-├── requirements.md               # Requirements specification
+├── kravspec.md                  # Requirements specification
 ├── test-cases.md                # Test cases
 ├── reflection.md                # Clean Code reflection
 └── README.md                    # This file
@@ -163,7 +163,7 @@ To run manual tests:
 
 ## Requirements
 
-See [requirements.md](requirements.md) for the complete requirements specification including functional and non-functional requirements.
+See [kravspec.md](kravspec.md) for the complete requirements specification including functional and non-functional requirements.
 
 ## Code Quality
 
