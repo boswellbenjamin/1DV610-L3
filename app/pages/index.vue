@@ -1,11 +1,8 @@
-<script setup lang="ts">
-
-</script>
+<script setup lang="ts"></script>
 
 <template>
   <div class="min-h-screen py-12 px-4">
     <div class="max-w-6xl mx-auto">
-      <!-- Hero Section -->
       <div class="text-center mb-16">
         <h2 class="text-4xl md:text-5xl font-bold text-white mb-6">
           Random Person Generator
