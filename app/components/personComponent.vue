@@ -96,6 +96,11 @@ function generateWithoutImage() {
         </div>
       </div>
 
+      <div class="bg-gray-700/50 rounded-xl p-4">
+        <div class="text-sm text-gray-400 mb-1">Gender</div>
+        <div class="text-lg font-semibold">{{ person.getGender() }}</div>
+      </div>
+
       <div class="grid grid-cols-2 gap-4">
         <div class="bg-gray-700/50 rounded-xl p-4">
           <div class="text-sm text-gray-400 mb-1">Age</div>
