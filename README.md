@@ -74,6 +74,8 @@ l3/
 ├── app/
 │   ├── components/
 │   │   └── personComponent.vue    # Main person display component
+│   ├── services/
+│   │   └── PersonService.ts       # Business logic service class
 │   ├── layouts/
 │   │   └── default.vue           # Default layout
 │   └── pages/
@@ -92,7 +94,7 @@ l3/
 ### Dependencies
 
 - **nuxt** (^4.1.2): Vue.js framework
-- **person-data-generator** (^0.1.5): Module for generating random person data
+- **person-data-generator** (^0.1.6): Module for generating random person data
 - **vue** (^3.5.21): JavaScript framework
 - **@nuxtjs/tailwindcss** (^6.14.0): CSS framework
 
@@ -138,10 +140,13 @@ npm install person-data-generator
 ```
 
 ```javascript
-import { Person } from "person-data-generator";
+import { PersonGenerator } from "person-data-generator/person-generator.js";
+
+// Create a generator instance
+const generator = new PersonGenerator();
 
 // Generate a random person
-const person = Person.random();
+const person = generator.generate();
 
 // Access person data
 console.log(person.getName());

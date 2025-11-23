@@ -39,33 +39,46 @@ async function renderPortrait() {
 
 ## Chapter 3: Functions
 
-I learned that functions should be small and do one thing. Looking at my code, i tried to follow this by splitting up my component functions. `renderPortrait()` only handles the API call and image loading, while `generateWithImage()` and `generateWithoutImage()` are separate functions that do specific things. The book says to avoid flag arguments, which i did by creating two separate functions instead of one function with a boolean parameter like `generate(withImage: boolean)`. I also tried to keep functions at one level of abstraction. My error handling uses try-catch which the book says is better than returning error codes.
+I learned that functions should be small and do one thing. Looking at my code, i tried to follow this by splitting up my component functions and creating a separate `PersonService` class that handles the business logic. The component functions `generateWithImage()` and `generateWithoutImage()` are now thin wrappers that delegate to the service. The book says to avoid flag arguments, which i did by creating two separate functions instead of one function with a boolean parameter like `generate(withImage: boolean)`. I also tried to keep functions at one level of abstraction. My error handling uses try-catch which the book says is better than returning error codes.
 
 ```typescript
-// From personComponent.vue - small functions doing one thing
-async function renderPortrait() {
-  isLoadingImage.value = true;
+// From PersonService.ts - small methods doing one thing
+async generatePortrait(person: PersonData): Promise<string> {
   try {
-    const response = await $fetch<{ imageUrl: string }>("/api/generate-portrait", {
+    const response = await $fetch<PortraitResponse>("/api/generate-portrait", {
       method: "POST",
-      body: { /* person data */ }
+      body: this.buildPortraitRequest(person),
     });
-    imageSrc.value = response.imageUrl;
-  } catch (error) { // Error handling with try-catch
-    console.error("Failed to generate:", error);
-    imageSrc.value = "/blank-profilepic.svg";
-  } finally {
-    isLoadingImage.value = false;
+    return response.imageUrl;
+  } catch (error) {
+    console.error("Failed to generate portrait:", error);
+    return this.defaultImageUrl;
   }
 }
 
-function generateWithImage() {
-  person.value = Person.random();
-  renderPortrait();
+private buildPortraitRequest(person: PersonData): Record<string, unknown> {
+  return {
+    firstName: person.getName(),
+    lastName: person.getSurname(),
+    // ...
+  };
+}
+```
+
+```typescript
+// From personComponent.vue - thin functions delegating to service
+const personService = new PersonService();
+
+async function generateWithImage() {
+  person.value = personService.generatePerson();
+  isLoadingImage.value = true;
+  imageSrc.value = await personService.generatePortrait(person.value);
+  isLoadingImage.value = false;
 }
 
 function generateWithoutImage() {
-  person.value = Person.random();
+  person.value = personService.generatePerson();
+  imageSrc.value = personService.getDefaultImageUrl();
 }
 ```
 
@@ -82,7 +95,9 @@ export default defineEventHandler(async (event) => {
 
   try {
     const person = new Person(/* ...params */);
-    const imageUrl = await PersonAI.generatePortraitFromEnv(person);
+    const portraitFactory = new PortraitGeneratorFactory();
+    const portraitGenerator = portraitFactory.createFromEnv();
+    const imageUrl = await portraitGenerator.generatePortrait(person);
     return { imageUrl };
   } catch (error) {
     console.error("Portrait generation error:", error);
@@ -107,20 +122,17 @@ I learned that formatting is about communication and that code should read like 
 ```typescript
 // From personComponent.vue - variables at top, functions below
 <script lang="ts" setup>
-import { ref, onMounted } from "vue";
-import { Person } from "person-data-generator";
+import { ref } from "vue";
+import { PersonService } from "~/services/PersonService";
 
-// State variables grouped together at top
-let person = ref(Person.random());
-const imageSrc = ref("/blank-profilepic.svg");
+// Service instance and state variables grouped together at top
+const personService = new PersonService();
+const person = ref(personService.generatePerson());
+const imageSrc = ref(personService.getDefaultImageUrl());
 const isLoadingImage = ref(false);
 
 // Functions below, with blank lines for vertical openness
-async function renderPortrait() {
-  // ...implementation
-}
-
-function generateWithImage() {
+async function generateWithImage() {
   // ...implementation
 }
 
@@ -134,7 +146,7 @@ function generateWithoutImage() {
 
 ## Chapter 6: Objects and Data Structures
 
-This chapter talks about data abstraction and the difference between objects and data structures. My `PersonData` interface is a data structure because it just exposes data with no behavior, which is fine for transferring data in an API. The `Person` class from my module is interesting because it is kind of a hybrid. The book says to avoid hybrids, but my Person class has public properties AND getter methods. I had to keep the properties public because i had problems with SSR (Server Side Rendering) in Nuxt when they were private. The book would say this is not ideal, but sometimes framework constraints force you to make trade-offs. The getter methods still provide some abstraction even though the data is technically public. You could argue the getters are redundant since the properties are public anyway, but i kept them because they signal the intended public API and allow for future changes without breaking code that uses the module. The Law of Demeter says you should not chain method calls, and in my Vue component i do `person.value.getName()` which is a bit of a train wreck, but that is how Vue refs work, though i could possibly make it less "train-wrecky".
+This chapter talks about data abstraction and the difference between objects and data structures. My `PersonData` interface is a data structure because it just exposes data with no behavior, which is fine for transferring data in an API. The `Person` class from my module is now a pure data structure with private properties and getter methods, which follows the book's recommendation to hide implementation. The `PersonGenerator` class is a separate object that handles the creation of Person instances, which follows the principle of separating data from behavior. I also created a `PersonService` class in my L3 app that encapsulates the business logic and delegates to the module classes. The Law of Demeter says you should not chain method calls, and in my Vue component i do `person.value.getName()` which is a bit of a train wreck, but that is how Vue refs work.
 
 ```typescript
 // Data Transfer Object - just data, no behavior
@@ -148,11 +160,11 @@ interface PersonData {
 ```
 
 ```typescript
-// From Person class in my module - hybrid with public data and methods
+// From Person class in my module - pure data structure with private properties
 export class Person {
-  firstName: string;  // Public due to SSR constraints
-  lastName: string;   // Public due to SSR constraints
-  age: number;
+  private firstName: string;
+  private lastName: string;
+  private age: number;
   // ...
 
   getName(): string {
@@ -163,29 +175,37 @@ export class Person {
     return this.lastName;
   }
 }
+
+// PersonGenerator - separate object that creates Person instances
+export class PersonGenerator {
+  private emailGenerator: EmailGenerator;
+  private professionResolver: ProfessionResolver;
+  // ...
+
+  generate(): Person {
+    // Creates and returns a new Person
+  }
+}
 ```
 
 ---
 
 ## Chapter 7: Error Handling
 
-The book says to use exceptions rather than return codes, and i followed this in my code. My `renderPortrait()` function uses try-catch to handle errors from the API call. The book also says don't return null, but honestly i kind of do this in my API where i return a blank image URL on failure instead of throwing an error. I think this is okay though because it is defining the normal flow, which the book actually recommends. My error handling provides context by logging the error with `console.error()` before returning the fallback value. I could improve this by creating custom exception classes, but for this small app the basic error handling works fine.
+The book says to use exceptions rather than return codes, and i followed this in my code. My `PersonService.generatePortrait()` method uses try-catch to handle errors from the API call. The book also says don't return null, but honestly i kind of do this in my service where i return a blank image URL on failure instead of throwing an error. I think this is okay though because it is defining the normal flow, which the book actually recommends. My error handling provides context by logging the error with `console.error()` before returning the fallback value. I could improve this by creating custom exception classes, but for this small app the basic error handling works fine.
 
 ```typescript
-// From personComponent.vue - using exceptions with try-catch
-async function renderPortrait() {
-  isLoadingImage.value = true;
+// From PersonService.ts - using exceptions with try-catch
+async generatePortrait(person: PersonData): Promise<string> {
   try {
-    const response = await $fetch<{ imageUrl: string }>("/api/generate-portrait", {
+    const response = await $fetch<PortraitResponse>("/api/generate-portrait", {
       method: "POST",
-      body: { /* ...data */ }
+      body: this.buildPortraitRequest(person),
     });
-    imageSrc.value = response.imageUrl;
+    return response.imageUrl;
   } catch (error) {
-    console.error("Failed to generate:", error);
-    imageSrc.value = "/blank-profilepic.svg";
-  } finally {
-    isLoadingImage.value = false;
+    console.error("Failed to generate portrait:", error);
+    return this.defaultImageUrl;
   }
 }
 ```
@@ -193,7 +213,9 @@ async function renderPortrait() {
 ```typescript
 // From API - defining normal flow by returning safe default
 try {
-  const imageUrl = await PersonAI.generatePortraitFromEnv(person);
+  const portraitFactory = new PortraitGeneratorFactory();
+  const portraitGenerator = portraitFactory.createFromEnv();
+  const imageUrl = await portraitGenerator.generatePortrait(person);
   return { imageUrl };
 } catch (error) {
   console.error("Portrait generation error:", error);
@@ -205,19 +227,21 @@ try {
 
 ## Chapter 8: Boundaries
 
-This chapter is about working with third-party code and APIs. In my app, i use the `person-data-generator` module which is my own code from L2, but i also use external APIs like Replicate for image generation. The book talks about wrapping third-party APIs to keep clean boundaries, and i kind of do this in my `generate-portrait.post.ts` file which wraps the Replicate API call. This means if i want to switch to a different AI service later, i only need to change code in one place. The book also mentions learning tests, which i don't have, but i did test my API integration manually to make sure it works. I think my boundaries could be cleaner if i created a separate service class for the AI portrait generation.
+This chapter is about working with third-party code and APIs. In my app, i use the `person-data-generator` module which is my own code from L2, but i also use external APIs like Replicate for image generation. The book talks about wrapping third-party APIs to keep clean boundaries, and i do this in multiple places. In my L2 module, the `PortraitGenerator` class wraps the Replicate API, and in my L3 app, the `PersonService` class wraps the module. This means if i want to switch to a different AI service later, i only need to change code in one place. The book also mentions learning tests, which i don't have, but i did test my API integration manually to make sure it works. I also created a `PortraitGeneratorFactory` class that handles the creation of the generator with the API token from environment variables, which keeps the boundary clean.
 
 ```typescript
-// From generate-portrait.post.ts - wrapping external API
-import { PersonAI } from "person-data-generator/person-ai.js";
+// From generate-portrait.post.ts - wrapping external API with factory pattern
+import { PortraitGeneratorFactory } from "person-data-generator/person-ai.js";
 
 export default defineEventHandler(async (event) => {
   const personData = await readBody<PersonData>(event);
 
   try {
     const person = new Person(/* ...params */);
-    // Wrapped call to external API
-    const imageUrl = await PersonAI.generatePortraitFromEnv(person);
+    // Factory creates generator with API token from environment
+    const portraitFactory = new PortraitGeneratorFactory();
+    const portraitGenerator = portraitFactory.createFromEnv();
+    const imageUrl = await portraitGenerator.generatePortrait(person);
     return { imageUrl };
   } catch (error) {
     // Boundary protection with fallback
@@ -255,34 +279,52 @@ Loading spinner appears, then a new random person is displayed with AI portrait 
 
 ## Chapter 10: Classes
 
-This chapter emphasizes that classes should be small and have a single responsibility. Looking at my code, my `PersonComponent.vue` component handles both the UI and the API logic, which violates the Single Responsibility Principle. It would be better if i had a separate service class for handling the portrait generation API calls. The book talks about cohesion, meaning that methods should use the instance variables, and my component does this well because `renderPortrait()` uses `isLoadingImage` and `imageSrc`. The Person class from my module follows SRP well because it just represents person data and nothing else. The book says organizing for change and maintaining cohesion results in many small classes, and i could improve my app by splitting it into more smaller classes.
+This chapter emphasizes that classes should be small and have a single responsibility. I improved my code by creating a `PersonService` class that handles the business logic, separating it from the UI concerns in the component. Now my `PersonComponent.vue` only handles UI state and delegates all business logic to the service. The book talks about cohesion, meaning that methods should use the instance variables, and my `PersonService` class does this well because all methods use the `personGenerator` and `defaultImageUrl` instance variables. The Person class from my module follows SRP well because it just represents person data, while `PersonGenerator` handles creation. The book says organizing for change and maintaining cohesion results in many small classes, and my refactored code now has this structure.
 
 ```typescript
-// PersonComponent - could be more cohesive with separate service class
-let person = ref(Person.random());
-const imageSrc = ref("/blank-profilepic.svg");
+// PersonService - handles business logic, good SRP
+export class PersonService {
+  private personGenerator: PersonGenerator;
+  private defaultImageUrl: string;
+
+  generatePerson(): PersonData {
+    return this.personGenerator.generate();
+  }
+
+  async generatePortrait(person: PersonData): Promise<string> {
+    // Only API concern
+  }
+}
+```
+
+```typescript
+// PersonComponent - now only handles UI concerns
+const personService = new PersonService();
+const person = ref(personService.generatePerson());
 const isLoadingImage = ref(false);
 
-// This mixing UI state and API logic violates SRP
-async function renderPortrait() {
-  isLoadingImage.value = true; // UI concern
-  const response = await $fetch(...); // API concern
-  imageSrc.value = response.imageUrl; // UI concern
+async function generateWithImage() {
+  person.value = personService.generatePerson();
+  isLoadingImage.value = true; // UI concern only
+  imageSrc.value = await personService.generatePortrait(person.value);
+  isLoadingImage.value = false; // UI concern only
 }
 ```
 
 ```typescript
 // Person class from module - good SRP, only handles person data
 export class Person {
-  constructor(firstName, lastName, age, ...) {
-    this.firstName = firstName;
-    this.lastName = lastName;
-    // ...
-  }
+  private firstName: string;
+  private lastName: string;
+  // ...
 
   getName() { return this.firstName; }
   getSurname() { return this.lastName; }
-  // Only person-related methods
+}
+
+// PersonGenerator - separate class for creation
+export class PersonGenerator {
+  generate(): Person { /* ... */ }
 }
 ```
 
@@ -310,4 +352,4 @@ const response = await $fetch("/api/generate-portrait", {...});
 
 ## Summary
 
-Going through Clean Code chapters 2-11 changed how i think about writing code. The biggest lessons for me were about meaningful naming, keeping functions small, and the Single Responsibility Principle. I tried to apply these principles in both my L3 app and when improving my L2 module. Some things are harder to apply in framework code like Vue and Nuxt, but the underlying principles still make sense. The main thing i learned is that code is read way more than it is written, so making it clear and understandable is more important than being clever or writing less lines. If i were to refactor my app further, i would focus on better separation of concerns by creating service classes for the API logic.
+Going through Clean Code chapters 2-11 changed how i think about writing code. The biggest lessons for me were about meaningful naming, keeping functions small, and the Single Responsibility Principle. I tried to apply these principles in both my L3 app and when improving my L2 module. In my L2 module i refactored the code to avoid static methods and instead use proper OOP with classes like `PersonGenerator`, `EmailGenerator`, `ProfessionResolver`, and `RandomSelector`. In my L3 app i created a `PersonService` class that separates business logic from UI concerns. Some things are harder to apply in framework code like Vue and Nuxt, but the underlying principles still make sense. The main thing i learned is that code is read way more than it is written, so making it clear and understandable is more important than being clever or writing less lines.
