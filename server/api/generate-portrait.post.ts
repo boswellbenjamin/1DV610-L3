@@ -1,4 +1,4 @@
-import { PersonAI } from "person-data-generator/person-ai.js";
+import { PortraitGeneratorFactory } from "person-data-generator/person-ai.js";
 import { Person } from "person-data-generator";
 
 interface PersonData {
@@ -31,7 +31,9 @@ export default defineEventHandler(async (event) => {
       personData.email
     );
 
-    const imageUrl = await PersonAI.generatePortraitFromEnv(person);
+    const portraitFactory = new PortraitGeneratorFactory();
+    const portraitGenerator = portraitFactory.createFromEnv();
+    const imageUrl = await portraitGenerator.generatePortrait(person);
     return { imageUrl };
   } catch (error) {
     console.error("Portrait generation error:", error);

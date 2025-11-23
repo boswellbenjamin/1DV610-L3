@@ -1,48 +1,22 @@
 <script lang="ts" setup>
-import { ref, onMounted } from "vue";
-import { Person } from "person-data-generator";
+import { ref } from "vue";
+import { PersonService } from "~/services/PersonService";
 
-let person = ref(Person.random());
-const imageSrc = ref("/blank-profilepic.svg");
+const personService = new PersonService();
+const person = ref(personService.generatePerson());
+const imageSrc = ref(personService.getDefaultImageUrl());
 const isLoadingImage = ref(false);
 
-async function renderPortrait() {
+async function generateWithImage() {
+  person.value = personService.generatePerson();
   isLoadingImage.value = true;
-  try {
-    const response = await $fetch<{ imageUrl: string }>(
-      "/api/generate-portrait",
-      {
-        method: "POST",
-        body: {
-          firstName: person.value.getName(),
-          lastName: person.value.getSurname(),
-          age: person.value.getAge(),
-          gender: person.value.getGender(),
-          profession: person.value.getProfession(),
-          country: person.value.getCountry(),
-          city: person.value.getCity(),
-          postalCode: person.value.getPostalCode(),
-          address: person.value.getAddress(),
-          email: person.value.getEmail(),
-        },
-      }
-    );
-    imageSrc.value = response.imageUrl;
-  } catch (error) {
-    console.error("Failed to generate:", error);
-    imageSrc.value = "/blank-profilepic.svg";
-  } finally {
-    isLoadingImage.value = false;
-  }
-}
-
-function generateWithImage() {
-  person.value = Person.random();
-  renderPortrait();
+  imageSrc.value = await personService.generatePortrait(person.value);
+  isLoadingImage.value = false;
 }
 
 function generateWithoutImage() {
-  person.value = Person.random();
+  person.value = personService.generatePerson();
+  imageSrc.value = personService.getDefaultImageUrl();
 }
 </script>
 
